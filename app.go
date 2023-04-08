@@ -15,6 +15,7 @@ import (
 
 	"github.com/apex/gateway/v2"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	_ "github.com/lib/pq"
 
 	"golang.org/x/exp/slog"
@@ -37,6 +38,8 @@ func NewServer() (*Server, error) {
 		router: chi.NewRouter(),
 		ctx:    context.Background(),
 	}
+
+	srv.router.Use(middleware.Logger)
 
 	db, err := sql.Open("postgres", os.Getenv("POSTGRES_DSN"))
 	if err != nil {
@@ -80,6 +83,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("error listing authors", err)
 	}
+
+	log.Info("authors", authors)
 
 	err = t.ExecuteTemplate(w, "index.html", struct {
 		Authors []tutorial.Author
