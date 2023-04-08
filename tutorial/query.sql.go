@@ -7,7 +7,6 @@ package tutorial
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createAuthor = `-- name: CreateAuthor :one
@@ -21,7 +20,7 @@ RETURNING id, created_at, name, bio
 
 type CreateAuthorParams struct {
 	Name string
-	Bio  sql.NullString
+	Bio  string
 }
 
 func (q *Queries) CreateAuthor(ctx context.Context, arg CreateAuthorParams) (Author, error) {
@@ -107,7 +106,7 @@ RETURNING id, created_at, name, bio
 type UpdateAuthorParams struct {
 	ID   int64
 	Name string
-	Bio  sql.NullString
+	Bio  string
 }
 
 func (q *Queries) UpdateAuthor(ctx context.Context, arg UpdateAuthorParams) (Author, error) {
