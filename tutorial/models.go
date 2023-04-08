@@ -6,10 +6,12 @@ package tutorial
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Author struct {
-	ID   int64
-	Name string
-	Bio  sql.NullString
+	ID        int64
+	CreatedAt time.Time
+	Name      string
+	Bio       sql.NullString
 }
