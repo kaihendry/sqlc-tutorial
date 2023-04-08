@@ -33,7 +33,12 @@
 
                 <tr>
                     <td>{{ .Name }}</td>
-                    <td>{{ .Bio }}</td>
+
+
+                    <td>{{ .Bio.String }}</td>
+                    <!-- not 100% sure why we would want our row to be nullable, save space? -->
+
+
                     <td>
                         <button class="btn btn-danger" hx-delete="/author/{{ .ID }}">
                             Delete

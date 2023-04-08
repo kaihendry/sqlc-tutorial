@@ -85,7 +85,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("authors", authors)
+	log.Info("authors", "count", len(authors))
 
 	err = t.ExecuteTemplate(w, "index.html", struct {
 		Authors []tutorial.Author
