@@ -3,55 +3,104 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
+	"embed"
+	"fmt"
+	"html/template"
+	"net/http"
 	"os"
-	"reflect"
+	"runtime"
+	"strconv"
 
 	"tutorial.sqlc.dev/app/tutorial"
 
+	"github.com/apex/gateway/v2"
+	"github.com/go-chi/chi"
 	_ "github.com/lib/pq"
+
+	"golang.org/x/exp/slog"
+	log "golang.org/x/exp/slog"
 )
 
-func run() error {
-	ctx := context.Background()
+var GoVersion = runtime.Version()
+
+//go:embed static
+var static embed.FS
+
+type Server struct {
+	router *chi.Mux
+	ctx    context.Context
+	db     *tutorial.Queries
+}
+
+func NewServer() (*Server, error) {
+	srv := Server{
+		router: chi.NewRouter(),
+		ctx:    context.Background(),
+	}
 
 	db, err := sql.Open("postgres", os.Getenv("POSTGRES_DSN"))
 	if err != nil {
-		return err
+		log.Error("error connecting to database", err)
 	}
 
-	queries := tutorial.New(db)
+	srv.db = tutorial.New(db)
 
-	// list all authors
-	authors, err := queries.ListAuthors(ctx)
-	if err != nil {
-		return err
-	}
-	log.Println(authors)
+	srv.router.Get("/", srv.handleIndex)
+	srv.router.Delete("/author/{id}", srv.handleDeleteAuthor)
 
-	// create an author
-	insertedAuthor, err := queries.CreateAuthor(ctx, tutorial.CreateAuthorParams{
-		Name: "Brian Kernighan",
-		Bio:  sql.NullString{String: "Co-author of The C Programming Language and The Go Programming Language", Valid: true},
-	})
-	if err != nil {
-		return err
-	}
-	log.Println(insertedAuthor)
+	return &srv, nil
 
-	// get the author we just inserted
-	fetchedAuthor, err := queries.GetAuthor(ctx, insertedAuthor.ID)
-	if err != nil {
-		return err
-	}
-
-	// prints true
-	log.Println(reflect.DeepEqual(insertedAuthor, fetchedAuthor))
-	return nil
 }
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+
+	server, err := NewServer()
+	if err != nil {
+		slog.Error("failed to create server", err)
 	}
+
+	if _, ok := os.LookupEnv("AWS_LAMBDA_FUNCTION_NAME"); ok {
+		log.SetDefault(log.New(log.NewJSONHandler(os.Stdout)))
+		err = gateway.ListenAndServe("", server.router)
+	} else {
+		log.SetDefault(log.New(log.NewTextHandler(os.Stdout)))
+		log.Info("local development", "port", os.Getenv("PORT"))
+		err = http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), server.router)
+	}
+	log.Error("error listening", err)
+
+}
+
+func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Version", fmt.Sprintf("%s %s", os.Getenv("version"), GoVersion))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	t := template.Must(template.New("").ParseFS(static, "static/index.html"))
+
+	authors, err := s.db.ListAuthors(s.ctx)
+	if err != nil {
+		log.Error("error listing authors", err)
+	}
+
+	err = t.ExecuteTemplate(w, "index.html", struct {
+		Authors []tutorial.Author
+	}{
+		Authors: authors,
+	})
+
+	if err != nil {
+		slog.Error("template failed to parse", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// handle delete on /authors/{id}
+func (s *Server) handleDeleteAuthor(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	log.Info("deleting author", "id", id)
+	err := s.db.DeleteAuthor(s.ctx, int64(id))
+	if err != nil {
+		log.Error("error deleting author", err)
+	}
+	w.WriteHeader(http.StatusOK)
 }
