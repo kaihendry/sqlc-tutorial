@@ -18,7 +18,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	_ "github.com/lib/pq"
 
-	"golang.org/x/exp/slog"
 	log "golang.org/x/exp/slog"
 )
 
@@ -59,7 +58,7 @@ func main() {
 
 	server, err := NewServer()
 	if err != nil {
-		slog.Error("failed to create server", err)
+		log.Error("failed to create server", err)
 	}
 
 	if _, ok := os.LookupEnv("AWS_LAMBDA_FUNCTION_NAME"); ok {
@@ -82,6 +81,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	authors, err := s.db.ListAuthors(s.ctx)
 	if err != nil {
 		log.Error("error listing authors", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	log.Info("authors", authors)
@@ -93,7 +94,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		slog.Error("template failed to parse", err)
+		log.Error("template failed to parse", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
