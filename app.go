@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -18,7 +19,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	_ "github.com/lib/pq"
 
-	log "golang.org/x/exp/slog"
+	"golang.org/x/exp/slog"
 )
 
 var GoVersion = runtime.Version()
@@ -40,9 +41,14 @@ func NewServer() (*Server, error) {
 
 	srv.router.Use(middleware.Logger)
 
-	db, err := sql.Open("postgres", os.Getenv("POSTGRES_DSN"))
+	DSN, ok := os.LookupEnv("POSTGRES_DSN")
+	if !ok {
+		return nil, fmt.Errorf("missing POSTGRES_DSN environment variable")
+	}
+
+	db, err := sql.Open("postgres", DSN)
 	if err != nil {
-		log.Error("error connecting to database", err)
+		slog.Error("error connecting to database", err)
 	}
 
 	srv.db = tutorial.New(db)
@@ -58,18 +64,18 @@ func main() {
 
 	server, err := NewServer()
 	if err != nil {
-		log.Error("failed to create server", err)
+		log.Fatalf("failed to create server: %v", err)
 	}
 
 	if _, ok := os.LookupEnv("AWS_LAMBDA_FUNCTION_NAME"); ok {
-		log.SetDefault(log.New(log.NewJSONHandler(os.Stdout)))
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout)))
 		err = gateway.ListenAndServe("", server.router)
 	} else {
-		log.SetDefault(log.New(log.NewTextHandler(os.Stdout)))
-		log.Info("local development", "port", os.Getenv("PORT"))
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout)))
+		slog.Info("local development", "port", os.Getenv("PORT"))
 		err = http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), server.router)
 	}
-	log.Error("error listening", err)
+	slog.Error("error listening", err)
 
 }
 
@@ -80,12 +86,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	authors, err := s.db.ListAuthors(s.ctx)
 	if err != nil {
-		log.Error("error listing authors", err)
+		slog.Error("error listing authors", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Info("authors", "count", len(authors))
+	slog.Info("authors", "count", len(authors))
 
 	err = t.ExecuteTemplate(w, "index.html", struct {
 		Authors []tutorial.Author
@@ -94,7 +100,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Error("template failed to parse", err)
+		slog.Error("template failed to parse", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -103,10 +109,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 // handle delete on /authors/{id}
 func (s *Server) handleDeleteAuthor(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	log.Info("deleting author", "id", id)
+	slog.Info("deleting author", "id", id)
 	err := s.db.DeleteAuthor(s.ctx, int64(id))
 	if err != nil {
-		log.Error("error deleting author", err)
+		slog.Error("error deleting author", err)
 	}
 	w.WriteHeader(http.StatusOK)
 }
