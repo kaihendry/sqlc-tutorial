@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	"tutorial.sqlc.dev/app/tutorial"
 
@@ -48,13 +49,25 @@ func NewServer() (*Server, error) {
 
 	db, err := sql.Open("postgres", DSN)
 	if err != nil {
-		slog.Error("error connecting to database", err)
+		log.Fatalf("error connecting to database: %v", err)
 	}
+
+	start := time.Now()
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	latency := time.Since(start)
+	// log latency with slog
+	slog.Info("database connected", "latency", latency)
 
 	srv.db = tutorial.New(db)
 
 	srv.router.Get("/", srv.handleIndex)
 	srv.router.Delete("/author/{id}", srv.handleDeleteAuthor)
+	// create author
+	srv.router.Post("/author", srv.handleCreateAuthor)
 
 	return &srv, nil
 
@@ -77,6 +90,33 @@ func main() {
 	}
 	slog.Error("error listening", err)
 
+}
+
+// handle create on /author
+func (s *Server) handleCreateAuthor(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		slog.Error("error parsing form", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	name := r.Form.Get("name")
+	bio := r.Form.Get("bio")
+
+	slog.Info("creating author", "name", name, "bio", bio)
+
+	author, err := s.db.CreateAuthor(s.ctx, tutorial.CreateAuthorParams{
+		Name: name,
+		// Bio:  bio,
+	})
+	if err != nil {
+		slog.Error("error creating author", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slog.Info("created author", "id", author.ID)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

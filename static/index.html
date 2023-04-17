@@ -52,9 +52,18 @@
         </tbody>
     </table>
 
-    <p><a href="https://app.supabase.com/project/arysltztqesaosadiflr/editor/28522">
-            Supabase Editor
-        </a></p>
+    <!-- post form to create author -->
+    <form action="/author" method="POST" hx-post="/author">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" id="name" name="name" placeholder="Enter name">
+        </div>
+        <div class="form-group">
+            <label for="bio">Bio</label>
+            <input type="text" class="form-control" id="bio" name="bio" placeholder="Enter bio">
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
 </body>
 
 </html>
