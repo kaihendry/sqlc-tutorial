@@ -8,9 +8,9 @@ ORDER BY name;
 
 -- name: CreateAuthor :one
 INSERT INTO authors (
-  name, bio
+  name
 ) VALUES (
-  $1, $2
+  $1
 )
 RETURNING *;
 
@@ -20,7 +20,6 @@ WHERE id = $1;
 
 -- name: UpdateAuthor :one
 UPDATE authors
-  set name = $2,
-  bio = $3
+  set name = $2
 WHERE id = $1
 RETURNING *;

@@ -1,8 +1,6 @@
 DSN="postgresql://postgres:notsecret@localhost:5432/postgres" 
 
-.PHONY: sqlc
-
-run: sqlc
+localhost: sqlc
 	POSTGRES_DSN="user=postgres password=notsecret host=localhost port=5432 dbname=postgres sslmode=disable" gin
 
 sqlc:

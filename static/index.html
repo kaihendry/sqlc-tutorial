@@ -22,47 +22,29 @@
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Bio</th>
                 <th></th>
             </tr>
         </thead>
         <tbody hx-confirm="Are you sure?" hx-target="closest tr" hx-swap="outerHTML swap:1s">
-
             <ul>
                 {{range .Authors}}
-
                 <tr>
                     <td>{{ .Name }}</td>
-
-
-                    <td>{{ .Bio.String }}</td>
-                    <!-- not 100% sure why we would want our row to be nullable, save space? -->
-
-
                     <td>
                         <button class="btn btn-danger" hx-delete="/author/{{ .ID }}">
                             Delete
                         </button>
                     </td>
                 </tr>
-
                 {{- end}}
             </ul>
-
         </tbody>
     </table>
 
-    <!-- post form to create author -->
-    <form action="/author" method="POST" hx-post="/author">
-        <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" class="form-control" id="name" name="name" placeholder="Enter name">
-        </div>
-        <div class="form-group">
-            <label for="bio">Bio</label>
-            <input type="text" class="form-control" id="bio" name="bio" placeholder="Enter bio">
-        </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+    <form action="/author" method="POST">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter name">
+        <button type="submit">Submit</button>
     </form>
 </body>
 

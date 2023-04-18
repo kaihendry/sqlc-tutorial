@@ -106,17 +106,15 @@ func (s *Server) handleCreateAuthor(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("creating author", "name", name, "bio", bio)
 
-	author, err := s.db.CreateAuthor(s.ctx, tutorial.CreateAuthorParams{
-		Name: name,
-		// Bio:  bio,
-	})
+	author, err := s.db.CreateAuthor(s.ctx, name)
 	if err != nil {
 		slog.Error("error creating author", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	slog.Info("created author", "id", author.ID)
-	w.WriteHeader(http.StatusOK)
+	// redirect to index
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
